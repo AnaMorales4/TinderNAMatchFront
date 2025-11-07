@@ -1,8 +1,8 @@
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
 import { AuthProvider } from './context/authContext';
-import Register from'./pages/Register'
-import Home from './pages/Home';
-import Login from './pages/Login';
+import Register from './pages/Register.jsx'
+import Home from './pages/Home.jsx';
+import Login from './pages/Login.jsx';
 import Matches from './pages/Matches'
 import  Profile from './pages/Profile'
 import Navbar from './components/Navbar';
