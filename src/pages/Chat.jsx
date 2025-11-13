@@ -17,6 +17,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../context/authContext";
 import { getAllUsers } from "../services/userService";
 
+const WS_URL = __WS_URL__;
+
 const Chat = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -27,65 +29,19 @@ const Chat = () => {
   const [person, setPerson] = useState({});
   const [messages, setMessages] = useState([]);
   const messagesRef = useRef(null);
-
   const wsRef = useRef(null);
+  const reconnectTimeoutRef = useRef(null);
 
-  /* ─────────── Inicializar WebSocket ─────────── */
-  useEffect(() => {
-
-    const ws = new WebSocket(__WS_URL__);
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      console.log("✅ WebSocket connected");
-      // Unirse al "room" virtual enviando JSON
-      ws.send(JSON.stringify({ type: "join", senderId }));
-      ws.send(JSON.stringify({ type: "load history", senderId, receiverId }));
-    };
-
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-
-      switch (data.type) {
-        case "history":
-          setMessages(data.history || []);
-          scrollToBottom();
-          break;
-        case "chat message":
-          const msg = data.msg;
-          if (msg.senderId._id === senderId || msg.receiverId._id === senderId) {
-            setMessages((prev) => [...prev, msg]);
-            scrollToBottom();
-          }
-          break;
-        default:
-          break;
-      }
-    };
-
-    ws.onerror = (err) => console.error("WebSocket error:", err);
-    ws.onclose = () => console.log("WebSocket closed");
-
-    return () => ws.close();
-  }, [receiverId, senderId]);
-
-  /* ─────────── Enviar mensaje ─────────── */
-  const handleSend = (e) => {
-    e.preventDefault();
-    if (!input.trim() || !wsRef.current) return;
-
-    wsRef.current.send(
-      JSON.stringify({
-        type: "chat message",
-        senderId,
-        receiverId,
-        text: input,
-      })
-    );
-    setInput("");
+  /* ─────────── Función para enviar mensajes seguro ─────────── */
+  const sendMessage = (msg) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify(msg));
+    } else {
+      console.warn("WebSocket no está abierto, mensaje no enviado", msg);
+    }
   };
 
-  /* ─────────── Scroll autom. ─────────── */
+  /* ─────────── Scroll automático ─────────── */
   const scrollToBottom = () => {
     setTimeout(() => {
       messagesRef.current?.scrollTo({
@@ -95,7 +51,69 @@ const Chat = () => {
     }, 100);
   };
 
-  /* ────────────────────────── Cargar info receptor ────────────────────────── */
+  /* ─────────── Inicializar WebSocket con reconexión ─────────── */
+  useEffect(() => {
+    const connect = () => {
+      const ws = new WebSocket(WS_URL);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        console.log("✅ WebSocket connected");
+        sendMessage({ type: "join", senderId });
+        sendMessage({ type: "load history", senderId, receiverId });
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        switch (data.type) {
+          case "history":
+            setMessages(data.history || []);
+            scrollToBottom();
+            break;
+          case "chat message":
+            const msg = data.msg;
+            if (msg.senderId._id === senderId || msg.receiverId._id === senderId) {
+              setMessages((prev) => [...prev, msg]);
+              scrollToBottom();
+            }
+            break;
+          default:
+            break;
+        }
+      };
+
+      ws.onerror = (err) => console.error("WebSocket error:", err);
+
+      ws.onclose = () => {
+        console.log("WebSocket closed. Reconectando en 3s...");
+        reconnectTimeoutRef.current = setTimeout(connect, 3000);
+      };
+    };
+
+    connect();
+
+    return () => {
+      clearTimeout(reconnectTimeoutRef.current);
+      wsRef.current?.close();
+    };
+  }, [receiverId, senderId]);
+
+  /* ─────────── Enviar mensaje ─────────── */
+  const handleSend = (e) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+
+    sendMessage({
+      type: "chat message",
+      senderId,
+      receiverId,
+      text: input,
+    });
+
+    setInput("");
+  };
+
+  /* ─────────── Cargar info del receptor ─────────── */
   useEffect(() => {
     const init = async () => {
       const data = await getAllUsers();
@@ -104,7 +122,7 @@ const Chat = () => {
     init();
   }, [receiverId]);
 
-  /* ────────────────────────── UI ────────────────────────── */
+  /* ─────────── UI ─────────── */
   return (
     <Box display="flex" flexDirection="column" height="100vh">
       {/* HEADER */}
