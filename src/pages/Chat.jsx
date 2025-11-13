@@ -18,7 +18,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../context/authContext";
 import { getAllUsers } from "../services/userService";
 
-const socket = io(__API_URL__+"/ws/chat");
+const socket = io(__WS_URL__);
 
 const Chat = () => {
   const navigate = useNavigate();
