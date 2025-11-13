@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API = __API_URL__+'/api';
+const API = __API_URL__ + '/api/api';
 
 // Obtener perfil por ID
 export const getUserById = async (id) => {

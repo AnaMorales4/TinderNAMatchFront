@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API = __API_URL__+'/api';
+const API = __API_URL__ + '/api/api';
 
 export const loginUser = async (email, password) => {
   console.log("AuthService: Logging in user", API);
