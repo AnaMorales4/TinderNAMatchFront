@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => {
 
   const wsUrl =
     mode === 'development'
-      ? 'http://localhost:8001'
+      ? 'http://localhost:8001/chat'
       : 'wss://ivm4ax4gkc.execute-api.us-east-2.amazonaws.com/prod'
 
   return {
