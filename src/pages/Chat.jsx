@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from "react";
-import { io } from "socket.io-client";
 import {
   AppBar,
   Toolbar,
@@ -18,11 +17,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../context/authContext";
 import { getAllUsers } from "../services/userService";
 
-const socket = io(__WS_URL__, {
-  transports: ["websocket"],
-});
-
-
 const Chat = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -34,43 +28,60 @@ const Chat = () => {
   const [messages, setMessages] = useState([]);
   const messagesRef = useRef(null);
 
-  /* ─────────── Cargar info del receptor + unirse al room ─────────── */
-  useEffect(() => {
-    const init = async () => {
-      const data = await getAllUsers();
-      setPerson(data.find((u) => u._id === receiverId));
+  const wsRef = useRef(null);
 
-      socket.emit("join", senderId);
-      socket.emit("load history", { senderId, receiverId });
+  /* ─────────── Inicializar WebSocket ─────────── */
+  useEffect(() => {
+
+    const ws = new WebSocket(__WS_URL__);
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      console.log("✅ WebSocket connected");
+      // Unirse al "room" virtual enviando JSON
+      ws.send(JSON.stringify({ type: "join", senderId }));
+      ws.send(JSON.stringify({ type: "load history", senderId, receiverId }));
     };
-    init();
-  }, [receiverId, senderId]);
 
-  /* ─────────── Listeners de socket ─────────── */
-  useEffect(() => {
-    socket.on("history", (history) => {
-      setMessages(history);
-      scrollToBottom();
-    });
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
 
-    socket.on("chat message", (msg) => {
-      if (msg.senderId._id === senderId || msg.receiverId._id === senderId) {
-        setMessages((prev) => [...prev, msg]);
-        scrollToBottom();
+      switch (data.type) {
+        case "history":
+          setMessages(data.history || []);
+          scrollToBottom();
+          break;
+        case "chat message":
+          const msg = data.msg;
+          if (msg.senderId._id === senderId || msg.receiverId._id === senderId) {
+            setMessages((prev) => [...prev, msg]);
+            scrollToBottom();
+          }
+          break;
+        default:
+          break;
       }
-    });
-
-    return () => {
-      socket.off("history");
-      socket.off("chat message");
     };
-  }, [senderId]);
+
+    ws.onerror = (err) => console.error("WebSocket error:", err);
+    ws.onclose = () => console.log("WebSocket closed");
+
+    return () => ws.close();
+  }, [receiverId, senderId]);
 
   /* ─────────── Enviar mensaje ─────────── */
   const handleSend = (e) => {
     e.preventDefault();
-    if (!input.trim()) return;
-    socket.emit("chat message", { senderId, receiverId, text: input });
+    if (!input.trim() || !wsRef.current) return;
+
+    wsRef.current.send(
+      JSON.stringify({
+        type: "chat message",
+        senderId,
+        receiverId,
+        text: input,
+      })
+    );
     setInput("");
   };
 
@@ -84,23 +95,24 @@ const Chat = () => {
     }, 100);
   };
 
+  /* ────────────────────────── Cargar info receptor ────────────────────────── */
+  useEffect(() => {
+    const init = async () => {
+      const data = await getAllUsers();
+      setPerson(data.find((u) => u._id === receiverId));
+    };
+    init();
+  }, [receiverId]);
+
   /* ────────────────────────── UI ────────────────────────── */
   return (
     <Box display="flex" flexDirection="column" height="100vh">
       {/* HEADER */}
-      <AppBar
-        position="static"
-        sx={{
-          background: "linear-gradient(to right, #FD5068, #FF7854)",
-          boxShadow: 2,
-          mt: '64px'
-        }}
-      >
+      <AppBar position="static" sx={{ background: "linear-gradient(to right, #FD5068, #FF7854)", boxShadow: 2, mt: '64px' }}>
         <Toolbar>
           <IconButton edge="start" onClick={() => navigate(-1)} sx={{ color: "#fff" }}>
             <ArrowBackIcon />
           </IconButton>
-
           <Avatar
             src={
               !person.profilePhoto || person.profilePhoto.length === 0
@@ -130,10 +142,7 @@ const Chat = () => {
         {messages.map((msg, i) => {
           const isMine = msg.senderId._id === senderId;
           return (
-            <ListItem
-              key={i}
-              sx={{ justifyContent: isMine ? "flex-end" : "flex-start" }}
-            >
+            <ListItem key={i} sx={{ justifyContent: isMine ? "flex-end" : "flex-start" }}>
               <Paper
                 elevation={1}
                 sx={{
@@ -155,17 +164,7 @@ const Chat = () => {
       </List>
 
       {/* INPUT */}
-      <Box
-        component="form"
-        onSubmit={handleSend}
-        sx={{
-          display: "flex",
-          gap: 1,
-          p: 2,
-          bgcolor: "#fff",
-          borderTop: "1px solid #eee",
-        }}
-      >
+      <Box component="form" onSubmit={handleSend} sx={{ display: "flex", gap: 1, p: 2, bgcolor: "#fff", borderTop: "1px solid #eee" }}>
         <TextField
           fullWidth
           placeholder="Escribe tu mensaje..."
@@ -176,11 +175,7 @@ const Chat = () => {
         <Button
           type="submit"
           variant="contained"
-          sx={{
-            bgcolor: "#FD5068",
-            minWidth: 90,
-            "&:hover": { bgcolor: "#FF7854" },
-          }}
+          sx={{ bgcolor: "#FD5068", minWidth: 90, "&:hover": { bgcolor: "#FF7854" } }}
         >
           Enviar
         </Button>
