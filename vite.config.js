@@ -6,7 +6,7 @@ export default defineConfig(({ mode }) => {
   const apiUrl =
     mode === 'development'
       ? 'http://localhost:8000/api'
-      : 'https://94zv12s6dl.execute-api.us-east-2.amazonaws.com/prod'
+      : 'https://95pg5zgmi1.execute-api.us-east-2.amazonaws.com/prod'
 
   const wsUrl =
     mode === 'development'
