@@ -6,12 +6,12 @@ export default defineConfig(({ mode }) => {
   const apiUrl =
     mode === 'development'
       ? 'http://localhost:8000/api'
-      : 'https://95pg5zgmi1.execute-api.us-east-2.amazonaws.com/prod'
+      : 'https://vp5vakufz4.execute-api.us-east-2.amazonaws.com/prod'
 
   const wsUrl =
     mode === 'development'
       ? 'http://localhost:8001/chat'
-      : 'wss://ivm4ax4gkc.execute-api.us-east-2.amazonaws.com/prod'
+      : 'wss://lw2oo0yr31.execute-api.us-east-2.amazonaws.com/prod/chat'
 
   return {
     plugins: [react()], // ✅ this must be at the root, not inside define
