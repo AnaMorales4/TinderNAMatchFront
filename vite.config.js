@@ -6,7 +6,7 @@ export default defineConfig(({ mode }) => {
   const apiUrl =
     mode === 'development'
       ? 'http://localhost:3000/api'
-      : 'https://94zv12s6dl.execute-api.us-east-2.amazonaws.com/prod'
+      : 'https://api.yourdomain.com'
 
   return {
     plugins: [react()], // ✅ this must be at the root, not inside define
