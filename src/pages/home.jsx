@@ -87,7 +87,7 @@ const Home = () => {
           {!user?.profilePhoto?.length && <PersonIcon fontSize="large" />}
         </Avatar>
         <Typography variant="h5" fontWeight="bold">
-          ¡Hola, {user?.name || "Usuario"}!
+          ¡Hola insensato, {user?.name || "Usuario"}!
         </Typography>
         <Typography variant="body2" sx={{ opacity: 0.9 }}>
           Estas son personas cerca de ti, ¿a quién le darás like?
